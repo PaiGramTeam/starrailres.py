@@ -100,6 +100,7 @@ class CharacterBasicInfo(Struct):
     rank: int = 0
     level: int = 1
     promotion: int = 0
+    enhanced: bool = False
     skill_tree_levels: List[LevelInfo] = []
     light_cone: Optional[LightConeBasicInfo] = None
     relics: Optional[List[RelicBasicInfo]] = None
@@ -149,6 +150,7 @@ class CharacterInfo(Struct):
     rank: int
     level: int
     promotion: int
+    enhanced: bool
     icon: str
     preview: str
     portrait: str
@@ -160,6 +162,7 @@ class CharacterInfo(Struct):
     light_cone: Optional[LightConeInfo] = None
     relics: List[RelicInfo] = []
     relic_sets: List[RelicSetInfo] = []
+    statistics: List[AttributeInfo] = []
     attributes: List[AttributeInfo] = []
     additions: List[AttributeInfo] = []
     properties: List[PropertyInfo] = []

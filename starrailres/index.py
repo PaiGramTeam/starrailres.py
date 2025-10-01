@@ -152,6 +152,7 @@ class Index:
             rank=basic.rank,
             level=basic.level,
             promotion=basic.promotion,
+            enhanced=basic.enhanced,
             name=self.characters[basic.id].name,
             rarity=self.characters[basic.id].rarity,
             icon=self.characters[basic.id].icon,
@@ -167,21 +168,27 @@ class Index:
                 self.merge_character_skill_upgrade(
                     [
                         self.get_character_skill_upgrade_from_rank(
-                            basic.id, basic.rank
+                            basic.id, basic.rank, enhanced=basic.enhanced
                         ),
                         self.get_character_skill_upgrade_from_skill_tree(
                             basic.id, basic.skill_tree_levels
                         ),
                     ]
                 ),
+                enhanced=basic.enhanced,
             ),
-            skill_trees=self.fix_skill_tree_max_level(
-                self.get_character_skill_tree_info(basic.id, basic.skill_tree_levels),
-                self.get_character_skill_upgrade_from_rank(basic.id, basic.rank),
+            skill_trees=self.merge_character_skill_tree_upgrade(
+                self.get_character_skill_tree_info(
+                    basic.id, basic.skill_tree_levels, enhanced=basic.enhanced
+                ),
+                self.get_character_skill_upgrade_from_rank(
+                    basic.id, basic.rank, enhanced=basic.enhanced
+                ),
             ),
             light_cone=None,
             relics=[],
             relic_sets=[],
+            statistics=[],
             attributes=self.get_character_attribute_from_promotion(
                 basic.id, basic.promotion, basic.level
             ),
@@ -253,6 +260,13 @@ class Index:
         )
         # additions
         info.additions = self.calculate_additions(info.attributes, info.properties)
+        # statistics
+        info.statistics = self.merge_attribute(
+            [
+                info.attributes,
+                info.additions,
+            ]
+        )
         return info
 
     def get_light_cone_info(self, basic: LightConeBasicInfo) -> Optional[LightConeInfo]:
@@ -372,7 +386,7 @@ class Index:
     # internal methods
 
     def get_character_skill_info(
-        self, id: str, skill_levels: List[LevelInfo]
+        self, id: str, skill_levels: List[LevelInfo], *, enhanced: bool = False
     ) -> List[SkillInfo]:
         """
         Get character skill info by character id and skill levels.
@@ -402,6 +416,10 @@ class Index:
             skill_info_dict[skill_level.id] = skill_info
         skill_info_list = []
         for skill_id in self.characters[id].skills:
+            if enhanced and len(skill_id) == 6:
+                continue
+            elif not enhanced and len(skill_id) == 7:
+                continue
             if skill_id in skill_info_dict:
                 skill_info_list.append(skill_info_dict[skill_id])
             else:
@@ -424,7 +442,7 @@ class Index:
         return skill_info_list
 
     def get_character_skill_tree_info(
-        self, id: str, skill_tree_levels: List[LevelInfo]
+        self, id: str, skill_tree_levels: List[LevelInfo], *, enhanced: bool = False
     ) -> List[SkillTreeInfo]:
         """
         Get character skill tree info by character id and skill tree levels.
@@ -440,6 +458,10 @@ class Index:
         for skill_tree_id in self.characters[id].skill_trees:
             if skill_tree_id not in self.character_skill_trees:
                 return []
+            if enhanced and len(skill_tree_id) == 7:
+                continue
+            elif not enhanced and len(skill_tree_id) == 8:
+                continue
             parsed_info = SkillTreeInfo(
                 id=skill_tree_id,
                 level=(
@@ -530,7 +552,7 @@ class Index:
         return attributes
 
     def get_character_skill_upgrade_from_rank(
-        self, id: str, rank: int
+        self, id: str, rank: int, *, enhanced: bool = False
     ) -> List[LevelInfo]:
         """
         Get character skill upgrade from rank.
@@ -545,7 +567,12 @@ class Index:
             if unlock_rank in self.character_ranks:
                 skill_up_list = self.character_ranks[unlock_rank].level_up_skills
                 for skill_up in skill_up_list:
-                    skill_upgrades.append(LevelInfo(skill_up.id, skill_up.num))
+                    if not enhanced:
+                        skill_upgrades.append(LevelInfo(skill_up.id, skill_up.num))
+                    else:
+                        skill_upgrades.append(
+                            LevelInfo(f"1{skill_up.id}", skill_up.num)
+                        )
         return skill_upgrades
 
     def get_character_skill_upgrade_from_skill_tree(
@@ -704,7 +731,7 @@ class Index:
             )
         return properties
 
-    def fix_skill_tree_max_level(
+    def merge_character_skill_tree_upgrade(
         self, skill_tree: List[SkillTreeInfo], upgrade_list: List[LevelInfo]
     ) -> List[SkillTreeInfo]:
         """
@@ -716,6 +743,7 @@ class Index:
             if item.id in self.character_skill_trees:
                 skill_up_list = self.character_skill_trees[item.id].level_up_skills
                 if skill_up_list and skill_up_list[0].id in upgrade_dict:
+                    item.level += upgrade_dict[skill_up_list[0].id]
                     item.max_level += upgrade_dict[skill_up_list[0].id]
                 skill_tree_fixed.append(item)
         return skill_tree_fixed
